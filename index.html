@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  />
+  <meta
+    name="description"
+    content="Línea Perfecta, minijuego de artes plásticas de Musi para practicar control del trazo, precisión visual y coordinación."
+  />
+  <meta name="theme-color" content="#fff7f0" />
+  <title>Musi | Línea Perfecta</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Fondo decorativo -->
+    <div class="bg-orb orb-1" aria-hidden="true"></div>
+    <div class="bg-orb orb-2" aria-hidden="true"></div>
+    <div class="bg-grid" aria-hidden="true"></div>
+
+    <!-- HUD superior -->
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand-pill">🎨 Minijuego de artes plásticas</div>
+        <h1 class="game-title">Línea Perfecta</h1>
+        <p class="game-subtitle">
+          Sigue el recorrido con buen pulso y ayuda a Musi a desbloquear un nuevo trazo mágico.
+        </p>
+      </div>
+
+      <div class="hud-cards">
+        <article class="hud-card">
+          <span class="hud-label">Nivel</span>
+          <strong class="hud-value" id="hud-level">1</strong>
+        </article>
+
+        <article class="hud-card">
+          <span class="hud-label">Puntaje</span>
+          <strong class="hud-value" id="hud-score">0</strong>
+        </article>
+
+        <article class="hud-card">
+          <span class="hud-label">Precisión</span>
+          <strong class="hud-value" id="hud-accuracy">0%</strong>
+        </article>
+
+        <article class="hud-card">
+          <span class="hud-label">Estrellas</span>
+          <strong class="hud-value" id="hud-stars">0</strong>
+        </article>
+      </div>
+    </header>
+
+    <!-- Layout principal -->
+    <main class="game-layout">
+      <!-- Panel izquierdo -->
+      <aside class="side-panel left-panel">
+        <section class="panel-card mission-card">
+          <div class="panel-icon">✨</div>
+          <div>
+            <h2 class="panel-title">Objetivo</h2>
+            <p class="panel-text" id="mission-text">
+              Traza la línea guía desde el punto inicial hasta el final sin salirte demasiado del camino.
+            </p>
+          </div>
+        </section>
+
+        <section class="panel-card progress-card">
+          <div class="panel-head">
+            <h2 class="panel-title">Progreso</h2>
+            <span class="panel-mini" id="round-label">Ronda 1</span>
+          </div>
+
+          <div class="progress-dots" id="progress-dots" aria-label="Progreso por niveles">
+            <!-- ui.js puede poblar esto -->
+          </div>
+
+          <div class="keyword-box">
+            <span class="keyword-label">Palabra clave</span>
+            <strong class="keyword-value" id="keyword-value">---</strong>
+          </div>
+        </section>
+
+        <section class="panel-card controls-card">
+          <h2 class="panel-title">Cómo jugar</h2>
+          <ul class="steps-list">
+            <li>Empieza en el punto de inicio.</li>
+            <li>Sigue la guía con un trazo continuo.</li>
+            <li>Llega al final con la mejor precisión posible.</li>
+          </ul>
+        </section>
+      </aside>
+
+      <!-- Centro / canvas -->
+      <section class="play-area">
+        <div class="canvas-frame">
+          <div class="canvas-topbar">
+            <div class="canvas-status">
+              <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+              <span class="status-text" id="status-text">Esperando inicio</span>
+            </div>
+
+            <div class="canvas-actions">
+              <button class="ghost-btn" id="btn-clear" type="button">
+                Limpiar
+              </button>
+              <button class="ghost-btn" id="btn-restart" type="button">
+                Reiniciar nivel
+              </button>
+            </div>
+          </div>
+
+          <div class="canvas-wrap">
+            <canvas
+              id="game-canvas"
+              width="1280"
+              height="720"
+              aria-label="Área principal del minijuego Línea Perfecta"
+            ></canvas>
+
+            <div class="canvas-overlay" id="canvas-overlay">
+              <div class="overlay-card start-card" id="start-card">
+                <div class="overlay-badge">Musi te espera 🎵</div>
+                <h2 class="overlay-title">Prepara tu trazo</h2>
+                <p class="overlay-text">
+                  En este reto la idea no es correr como loco. La idea es
+                  dibujar con cuidado, con control y con flow, cosa rarísima en la humanidad moderna.
+                </p>
+
+                <div class="overlay-actions">
+                  <button class="primary-btn" id="btn-start" type="button">
+                    Comenzar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="feedback-bar">
+            <div class="feedback-main">
+              <span class="feedback-label">Feedback</span>
+              <strong class="feedback-value" id="feedback-text">
+                Toca comenzar para iniciar el primer trazo.
+              </strong>
+            </div>
+
+            <div class="mini-stats">
+              <span class="mini-chip">
+                Tiempo: <strong id="hud-time">0.0s</strong>
+              </span>
+              <span class="mini-chip">
+                Error: <strong id="hud-error">0</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel derecho -->
+      <aside class="side-panel right-panel">
+        <section class="panel-card mascot-card">
+          <div class="mascot-bubble">🧡 Musi</div>
+          <p class="mascot-text" id="mascot-text">
+            Respira, suelta la mano y sigue la forma. Un buen trazo también tiene ritmo.
+          </p>
+        </section>
+
+        <section class="panel-card result-card">
+          <h2 class="panel-title">Resultado actual</h2>
+
+          <div class="result-preview">
+            <div class="result-grade" id="result-grade">--</div>
+            <div class="result-stars" id="result-stars" aria-label="Estrellas logradas">
+              ☆ ☆ ☆
+            </div>
+          </div>
+
+          <div class="result-list">
+            <div class="result-row">
+              <span>Precisión</span>
+              <strong id="result-accuracy">0%</strong>
+            </div>
+            <div class="result-row">
+              <span>Fluidez</span>
+              <strong id="result-flow">0%</strong>
+            </div>
+            <div class="result-row">
+              <span>Control</span>
+              <strong id="result-control">0%</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-card actions-card">
+          <h2 class="panel-title">Acciones</h2>
+
+          <div class="stack-actions">
+            <button class="primary-btn" id="btn-next" type="button" disabled>
+              Siguiente nivel
+            </button>
+            <button class="secondary-btn" id="btn-menu" type="button">
+              Volver al mapa
+            </button>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <!-- Modal de cierre / resultado -->
+  <div class="modal-backdrop hidden" id="result-modal" aria-hidden="true">
+    <section class="result-modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-badge">Nivel completado</div>
+      <h2 class="modal-title" id="modal-title">Buen trazo</h2>
+      <p class="modal-text" id="modal-message">
+        Terminaste el recorrido. Vamos a ver qué tan fino estuvo ese pulso.
+      </p>
+
+      <div class="modal-score-grid">
+        <article class="modal-score-item">
+          <span class="modal-score-label">Puntaje</span>
+          <strong class="modal-score-value" id="modal-score">0</strong>
+        </article>
+        <article class="modal-score-item">
+          <span class="modal-score-label">Precisión</span>
+          <strong class="modal-score-value" id="modal-accuracy">0%</strong>
+        </article>
+        <article class="modal-score-item">
+          <span class="modal-score-label">Estrellas</span>
+          <strong class="modal-score-value" id="modal-stars">0</strong>
+        </article>
+      </div>
+
+      <div class="modal-keyword-box">
+        <span>Palabra clave desbloqueada</span>
+        <strong id="modal-keyword">---</strong>
+      </div>
+
+      <div class="modal-actions">
+        <button class="secondary-btn" id="btn-retry-modal" type="button">
+          Repetir
+        </button>
+        <button class="primary-btn" id="btn-continue-modal" type="button">
+          Continuar
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Módulo principal -->
+  <script type="module" src="./game.js"></script>
+</body>
+</html>
