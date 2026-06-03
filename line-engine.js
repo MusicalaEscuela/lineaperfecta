@@ -4,6 +4,8 @@
    Motor de canvas, dibujo de trayectorias y utilidades
 ========================================================= */
 
+import { BASE_WIDTH, BASE_HEIGHT } from "./levels.js";
+
 /* =========================================================
    CONFIG VISUAL
 ========================================================= */
@@ -61,18 +63,68 @@ export function resizeCanvasForDisplay(canvas) {
 export function getPointerPosFromEvent(event, canvas) {
   const rect = canvas.getBoundingClientRect();
 
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-
+  // Mapeamos siempre al sistema de coordenadas base (1280x720),
+  // que es donde están definidas las trayectorias de los niveles.
   return {
-    x: (event.clientX - rect.left) * scaleX,
-    y: (event.clientY - rect.top) * scaleY
+    x: ((event.clientX - rect.left) / rect.width) * BASE_WIDTH,
+    y: ((event.clientY - rect.top) / rect.height) * BASE_HEIGHT
   };
 }
 
 /* =========================================================
    ESCENA PRINCIPAL
 ========================================================= */
+
+// Cache de la capa estática (fondo + guía + puntos). Se reconstruye
+// solo cuando cambia el nivel o el tamaño real del canvas.
+let staticLayerCache = null;
+
+function getStaticLayer(canvas, level) {
+  const valid =
+    staticLayerCache &&
+    staticLayerCache.levelId === level.id &&
+    staticLayerCache.width === canvas.width &&
+    staticLayerCache.height === canvas.height;
+
+  if (valid) return staticLayerCache.canvas;
+
+  const layer = document.createElement("canvas");
+  layer.width = canvas.width;
+  layer.height = canvas.height;
+
+  const layerCtx = layer.getContext("2d");
+  applyBaseTransform(layerCtx, canvas);
+
+  drawCanvasBackdrop(layerCtx);
+  drawAmbientShapes(layerCtx);
+  drawGuideArea(layerCtx, level);
+  drawGuidePath(layerCtx, level.path);
+  drawStartPoint(layerCtx, level.startPoint, level.startRadius || 34);
+  drawEndPoint(layerCtx, level.endPoint, level.endRadius || 36);
+  drawFrameHighlights(layerCtx);
+
+  staticLayerCache = {
+    canvas: layer,
+    levelId: level.id,
+    width: canvas.width,
+    height: canvas.height
+  };
+
+  return layer;
+}
+
+// Escala el contexto para que dibujar en coordenadas base (1280x720)
+// cubra todo el canvas, sin importar su resolución real ni el DPR.
+function applyBaseTransform(ctx, canvas) {
+  ctx.setTransform(
+    canvas.width / BASE_WIDTH,
+    0,
+    0,
+    canvas.height / BASE_HEIGHT,
+    0,
+    0
+  );
+}
 
 export function drawLevelScene(ctx, {
   canvas,
@@ -84,15 +136,13 @@ export function drawLevelScene(ctx, {
 }) {
   if (!ctx || !canvas || !level) return;
 
-  clearCanvas(ctx, canvas);
-  drawCanvasBackdrop(ctx, canvas);
+  // Fondo estático cacheado (1:1 con el canvas real).
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(getStaticLayer(canvas, level), 0, 0);
 
-  drawAmbientShapes(ctx, canvas);
-  drawGuideArea(ctx, canvas, level);
-  drawGuidePath(ctx, level.path);
-
-  drawStartPoint(ctx, level.startPoint, level.startRadius || 34);
-  drawEndPoint(ctx, level.endPoint, level.endRadius || 36);
+  // Capa dinámica en coordenadas base.
+  applyBaseTransform(ctx, canvas);
 
   if (userPath.length > 0) {
     const strokeStyle = lastResult?.accuracy >= 80
@@ -107,59 +157,55 @@ export function drawLevelScene(ctx, {
     drawHintArrows(ctx, level.path);
   }
 
-  drawFrameHighlights(ctx, canvas);
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 /* =========================================================
    CANVAS BASE
 ========================================================= */
 
-function clearCanvas(ctx, canvas) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-function drawCanvasBackdrop(ctx, canvas) {
-  const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+function drawCanvasBackdrop(ctx) {
+  const gradient = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
   gradient.addColorStop(0, "#fffdfa");
   gradient.addColorStop(1, "#fff5ea");
 
   ctx.save();
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
   ctx.restore();
 
-  drawGrid(ctx, canvas);
+  drawGrid(ctx);
 }
 
-function drawGrid(ctx, canvas) {
+function drawGrid(ctx) {
   ctx.save();
   ctx.strokeStyle = "rgba(123, 80, 63, 0.05)";
   ctx.lineWidth = 1;
 
-  for (let x = 0; x <= canvas.width; x += CANVAS_BG_GRID_SIZE) {
+  for (let x = 0; x <= BASE_WIDTH; x += CANVAS_BG_GRID_SIZE) {
     ctx.beginPath();
     ctx.moveTo(x + 0.5, 0);
-    ctx.lineTo(x + 0.5, canvas.height);
+    ctx.lineTo(x + 0.5, BASE_HEIGHT);
     ctx.stroke();
   }
 
-  for (let y = 0; y <= canvas.height; y += CANVAS_BG_GRID_SIZE) {
+  for (let y = 0; y <= BASE_HEIGHT; y += CANVAS_BG_GRID_SIZE) {
     ctx.beginPath();
     ctx.moveTo(0, y + 0.5);
-    ctx.lineTo(canvas.width, y + 0.5);
+    ctx.lineTo(BASE_WIDTH, y + 0.5);
     ctx.stroke();
   }
 
   ctx.restore();
 }
 
-function drawAmbientShapes(ctx, canvas) {
+function drawAmbientShapes(ctx) {
   ctx.save();
 
   const shapes = [
-    { x: canvas.width * 0.15, y: canvas.height * 0.18, r: 90, color: "rgba(255, 214, 106, 0.10)" },
-    { x: canvas.width * 0.84, y: canvas.height * 0.24, r: 110, color: "rgba(123, 156, 255, 0.08)" },
-    { x: canvas.width * 0.78, y: canvas.height * 0.76, r: 130, color: "rgba(255, 158, 199, 0.08)" }
+    { x: BASE_WIDTH * 0.15, y: BASE_HEIGHT * 0.18, r: 90, color: "rgba(255, 214, 106, 0.10)" },
+    { x: BASE_WIDTH * 0.84, y: BASE_HEIGHT * 0.24, r: 110, color: "rgba(123, 156, 255, 0.08)" },
+    { x: BASE_WIDTH * 0.78, y: BASE_HEIGHT * 0.76, r: 130, color: "rgba(255, 158, 199, 0.08)" }
   ];
 
   for (const shape of shapes) {
@@ -183,7 +229,7 @@ function drawAmbientShapes(ctx, canvas) {
   ctx.restore();
 }
 
-function drawGuideArea(ctx, canvas, level) {
+function drawGuideArea(ctx, level) {
   const bounds = getPathBounds(level.path, 56);
 
   ctx.save();
@@ -216,17 +262,17 @@ function drawGuideArea(ctx, canvas, level) {
   ctx.restore();
 }
 
-function drawFrameHighlights(ctx, canvas) {
+function drawFrameHighlights(ctx) {
   ctx.save();
 
-  const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  const gradient = ctx.createLinearGradient(0, 0, BASE_WIDTH, BASE_HEIGHT);
   gradient.addColorStop(0, "rgba(255,255,255,0.45)");
   gradient.addColorStop(1, "rgba(255,255,255,0)");
 
   ctx.strokeStyle = gradient;
   ctx.lineWidth = 2;
 
-  roundRectPath(ctx, 10, 10, canvas.width - 20, canvas.height - 20, 28);
+  roundRectPath(ctx, 10, 10, BASE_WIDTH - 20, BASE_HEIGHT - 20, 28);
   ctx.stroke();
 
   ctx.restore();

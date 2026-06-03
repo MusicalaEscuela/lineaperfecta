@@ -13,11 +13,6 @@ export function setText(element, value) {
   element.textContent = value ?? "";
 }
 
-export function setHTML(element, value) {
-  if (!element) return;
-  element.innerHTML = value ?? "";
-}
-
 /* =========================================================
    BOTONES / ESTADOS BÁSICOS
 ========================================================= */
@@ -26,21 +21,6 @@ export function setButtonDisabled(button, disabled = true) {
   if (!button) return;
   button.disabled = !!disabled;
   button.setAttribute("aria-disabled", String(!!disabled));
-}
-
-export function showElement(element, display = "") {
-  if (!element) return;
-  element.style.display = display;
-}
-
-export function hideElement(element) {
-  if (!element) return;
-  element.style.display = "none";
-}
-
-export function toggleClass(element, className, force) {
-  if (!element || !className) return;
-  element.classList.toggle(className, force);
 }
 
 /* =========================================================
@@ -113,6 +93,7 @@ export function setResultSummary(refs, result) {
     setText(accuracyEl, "0%");
     setText(flowEl, "0%");
     setText(controlEl, "0%");
+    applyGradeClass(gradeEl, "");
     return;
   }
 
@@ -179,8 +160,9 @@ export function flashFeedback(element) {
 ========================================================= */
 
 function buildStarsString(stars = 0, spaced = false) {
-  const full = "★".repeat(Math.max(0, Math.min(3, stars)));
-  const empty = "☆".repeat(Math.max(0, 3 - stars));
+  const safeStars = Math.max(0, Math.min(3, stars));
+  const full = "★".repeat(safeStars);
+  const empty = "☆".repeat(3 - safeStars);
   const combined = `${full}${empty}`;
 
   if (!spaced) return combined;
@@ -212,6 +194,8 @@ function applyGradeClass(element, grade = "") {
       break;
     case "C":
       element.classList.add("grade-c");
+      break;
+    case "":
       break;
     default:
       element.classList.add("grade-d");

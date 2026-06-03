@@ -15,9 +15,7 @@ export function scoreAttempt({
   targetPath = [],
   elapsedMs = 0,
   expectedDurationMs = 7000,
-  allowedError = 28,
-  canvasWidth = 1280,
-  canvasHeight = 720
+  allowedError = 28
 }) {
   if (!Array.isArray(userPath) || userPath.length < 2) {
     return buildEmptyResult();
@@ -30,11 +28,7 @@ export function scoreAttempt({
   const sampledUser = normalizeSampleCount(userPath, 120);
   const sampledTarget = normalizeSampleCount(targetPath, 120);
 
-  const {
-    avgError,
-    maxError,
-    errorSamples
-  } = computePathError(sampledUser, sampledTarget);
+  const { avgError, maxError } = computePathError(sampledUser, sampledTarget);
 
   const accuracy = computeAccuracy(avgError, allowedError);
   const flow = computeFlow(userPath);
@@ -71,7 +65,6 @@ export function scoreAttempt({
     userLength: roundInt(getPathLength(userPath)),
     targetLength: roundInt(getPathLength(targetPath)),
 
-    errorSamples,
     stars: 0,
     grade: "C",
     feedback: ""
@@ -86,25 +79,17 @@ function computePathError(userPath, targetPath) {
   const count = Math.min(userPath.length, targetPath.length);
   let totalError = 0;
   let maxError = 0;
-  const errorSamples = [];
 
   for (let i = 0; i < count; i += 1) {
-    const userPoint = userPath[i];
-    const targetPoint = targetPath[i];
-    const error = distanceBetween(userPoint, targetPoint);
+    const error = distanceBetween(userPath[i], targetPath[i]);
 
     totalError += error;
     if (error > maxError) maxError = error;
-    errorSamples.push(error);
   }
 
   const avgError = count > 0 ? totalError / count : 999;
 
-  return {
-    avgError,
-    maxError,
-    errorSamples
-  };
+  return { avgError, maxError };
 }
 
 function computeAccuracy(avgError, allowedError) {
@@ -207,6 +192,21 @@ export function accuracyToStars(accuracy) {
   return 0;
 }
 
+export function gradeToTitle(grade) {
+  switch (grade) {
+    case "S":
+      return "Trazo perfecto";
+    case "A":
+      return "Excelente pulso";
+    case "B":
+      return "Muy buen trabajo";
+    case "C":
+      return "Buen intento";
+    default:
+      return "Sigue practicando";
+  }
+}
+
 export function buildFeedbackMessage(result) {
   const accuracy = result?.accuracy ?? 0;
   const flow = result?.flow ?? 0;
@@ -291,7 +291,6 @@ function buildEmptyResult() {
     elapsedMs: 0,
     userLength: 0,
     targetLength: 0,
-    errorSamples: [],
     stars: 0,
     grade: "D",
     feedback: "No hubo suficiente trazo para evaluar."
